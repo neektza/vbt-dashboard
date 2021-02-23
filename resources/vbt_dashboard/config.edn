@@ -1,0 +1,58 @@
+{:duct.profile/base
+ {:duct.core/project-ns
+  vbt-dashboard
+
+  :duct.router/ataraxy
+  {:routes
+   {[:get "/"]
+    [:vbt-dashboard.handler/index]
+
+    [:get "/entries"]
+    [:vbt-dashboard.handler.entries/list]
+
+    [:post "/entries" {{:keys [id description]} :body-params}]
+    [:vbt-dashboard.handler.entries/create id description]
+
+    [:get    "/entries/" id] [:vbt-dashboard.handler.entries/find    ^int id]
+    [:delete "/entries/" id] [:vbt-dashboard.handler.entries/destroy ^int id]}}
+
+  [:duct.handler.sql/query :vbt-dashboard.handler.entries/list]
+  {:sql   ["SELECT * FROM entries"]
+   :hrefs {:href "/entries/{id}"}}
+
+  [:duct.handler.static/ok :vbt-dashboard.handler/index]
+  {:body {:entries "/entries"}}
+
+  [:duct.handler.sql/insert :vbt-dashboard.handler.entries/create]
+  {:request {[_ id description] :ataraxy/result}
+   :sql     ["INSERT INTO entries (id, description) VALUES (?, ?)" id description]
+   :location (format "/entries/%s" id)}
+
+  [:duct.handler.sql/query-one :vbt-dashboard.handler.entries/find]
+  {:request {[_ id] :ataraxy/result}
+   :sql     ["SELECT * FROM entries WHERE id = ?" id]
+   :hrefs   {:href "/entries/{id}"}}
+
+  [:duct.handler.sql/execute :vbt-dashboard.handler.entries/destroy]
+  {:request {[_ id] :ataraxy/result}
+   :sql     ["DELETE FROM entries WHERE id = ?" id]}
+
+  :duct.migrator/ragtime
+  {:migrations [#ig/ref :vbt-dashboard.migration/create-entries]}
+
+  [:duct.migrator.ragtime/sql :vbt-dashboard.migration/create-entries]
+  {:up   ["CREATE TABLE entries (id INTEGER PRIMARY KEY, description TEXT)"]
+   :down ["DROP TABLE entries"]}
+
+  [:duct.migrator.ragtime/sql :vbt-dashboard.migration/create-users]
+  {:up ["CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT UNIQUE, password TEXT)"]
+   :down ["DROP TABLE users"]}}
+ 
+
+ :duct.profile/dev    #duct/include "dev"
+ :duct.profile/local  #duct/include "local"
+ :duct.profile/prod   {}
+
+ :duct.module/logging {}
+ :duct.module/sql     {}
+ :duct.module.web/api {}}
